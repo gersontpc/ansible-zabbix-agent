@@ -1,0 +1,3 @@
+---
+- name: install on zabbix
+  import_tasks: agent-zabbix.yml

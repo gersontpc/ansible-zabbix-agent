@@ -1,0 +1,106 @@
+---
+- name: install Python e agent zabbix
+  apt:
+    name: ['python', 'python-pip']
+    update_cache: yes
+    state: present
+  when: (ansible_os_family == "Debian") or (ansible_os_family == "Ubuntu")
+
+- name: Removendo Zabbix-Agent
+  apt:
+    name: zabbix-agent
+    state: removed
+
+- name: Registro de sistema operacional
+  shell: lsb_release -si | tr 'A-Z' 'a-z'
+  register: SO
+
+- name: Registro da versao do sistema operacional
+  shell: lsb_release -sc
+  register: SOVERSION
+
+- name: Registro do nome da maquina
+  shell: hostname
+  register: hname
+
+- name: Registro de IP
+  shell: hostname -I | awk '{print $1}'
+  register: hip
+
+- name: Registro de pacote instalado
+  shell: dpkg -l | grep zabbix-agent; echo $?
+  register: ipack
+
+- name: Removendo bibliotecas Zabbix-Agent
+  action: raw dpkg --purge zabbix-release && dpkg --purge zabbix-agent
+  when: ipack.stdout != "1"
+
+- name: Baixando biblioteca Zabbix-Agent 4.0
+  action: raw wget https://repo.zabbix.com/zabbix/4.0/"{{ SO.stdout }}"/pool/main/z/zabbix-release_4.0.2%2B"{{ SOVERSION.stdout }}"_all.deb
+
+- name: Executando novos repositorios .deb
+  action: raw dpkg -i zabbix-release_4.0-2+"{{ SOVERSION.stdout }}"_all.deb
+
+- name: Atualizando repositorios
+  action: raw apt-get update
+
+- name: Install agent-zabbix
+  apt:
+    name: zabbix-agent
+    state: installed
+
+- name: Copiando arquivo de configuracao do zabbix-agent
+  copy:
+    src: files/zabbix_agentd.conf
+    dest: /etc/zabbix/
+
+- name: adicionado nome do host
+  action: raw sed -i "s/Hostname=zabbix/Hostname="{{ hname.stdout }}"/g" /etc/zabbix/zabbix_agentd.conf
+
+- name: Iniciar agente zabbix
+  service:
+    name: zabbix-agent
+    state: started
+    enabled: yes
+
+- name: enviando arquivo zabbix pip
+  copy:
+    src: files/zabbix-api-0.5.3.tar.gz
+    dest: /tmp/
+
+- name: instalando o zabbix-api
+  shell: pip install /tmp/zabbix-api-0.5.3.tar.gz
+
+- name: Install on autodiscovery_zabbix
+  import_tasks: autodiscovery_zabbix.yml
+  when:
+    - RESPOND == "sim"
+
+- name: Colocando a maquina no monitoramento
+  local_action:
+    module: zabbix_host
+# Inclua os parâmetros do seu zabbix server [server_url,login_user e login_password]
+    server_url: "sua URL zabbix"
+    login_user: "Seu usuario"
+    login_password: "Sua senha"
+    host_name: '{{ hname.stdout }}'
+    visible_name: '{{ hname.stdout }}'
+    description: Instalacao e configuracao via ansible
+    host_groups:
+      - Linux servers
+    link_templates:
+      - Template OS Linux
+    status: enabled
+    interfaces:
+      - type: 1
+        main: 1
+        useip: 1
+        ip: '{{ hip.stdout }}'
+        dns: ""
+        port: 10050
+
+- name: Iniciar agente zabbix
+  service:
+    name: zabbix-agent
+    state: restarted
+    enabled: yes

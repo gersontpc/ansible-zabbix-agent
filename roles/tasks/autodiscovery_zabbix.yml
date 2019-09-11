@@ -1,0 +1,31 @@
+---
+- name: autodiscovery
+  copy:
+    src: zabbix/bin
+    dest: /etc/zabbix/
+
+- name: autodiscovery
+  copy:
+    src: zabbix/tcp_services.conf
+    dest: /etc/zabbix/zabbix_agentd.d/
+
+- name: autodiscovery
+  copy:
+    src: zabbix/udp_services.conf
+    dest: /etc/zabbix/zabbix_agentd.d/  
+
+- name: autodiscovery
+  copy:
+    src: zabbix/zabbix
+    dest: /etc/sudoers.d/
+
+- name: Colocando a maquina no monitoramento autodiscover
+  local_action:
+    module: zabbix_host
+    server_url: https://url-zabbixserver.com
+    login_user: zabbix
+    login_password: senhadozabbixserver
+    link_templates:
+      - Template Linux TCP Services
+      - Template Linux UDP Services
+    status: enabled

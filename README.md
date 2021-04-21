@@ -39,5 +39,3 @@ Após executar o seu playbook, basta ir no fontend do zabbix e conferir o host l
 Mande um Pull Request :)  
 
 Link para o artigo: [Linux na Web](https://www.linuxnaweb.com/instalacao-automatizada-agente-zabbix-com-ansible/)  
-**Créditos:**
-Gilberto Guilherme
